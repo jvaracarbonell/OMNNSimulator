@@ -1,0 +1,7 @@
+Metadata-Version: 2.1
+Name: omsimulator
+Version: 0.1.0
+Summary: A package for NN-based simulations of IceCube Optical Modules
+Author: Your Name
+Author-email: javivarac98@gmail.com
+Requires-Python: >=3.7
