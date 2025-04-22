@@ -4,6 +4,9 @@ This project uses machine learning to simulate the response of multi-PMT optical
 The Neural Network models are trained on Geant4 simulations which are very accurate but slow.
 
 
+Information about scripts in OMClassifier:
+
+
 # torch_trazing_model.py :
 
 This script converts a model into a format that can be used and deployed in C++
