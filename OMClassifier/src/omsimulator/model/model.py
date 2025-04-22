@@ -35,7 +35,7 @@ class PMTNetwork(pl.LightningModule):
         
         self.pmt_positions = torch.tensor(pmt_positions, dtype=torch.float32)  # Shape: (16, 3) for 16 PMTs with (x, y, z)
         self.pmt_directions = torch.tensor(pmt_directions, dtype=torch.float32)  # Shape: (16, 3) for 16 PMTs' direction vectors
-        self.wv_global = wv_global
+        self.wv_global = False, #wv_global # Pass wv always to global and local part
         self.global_features = global_features
         if not self.global_features:
             num_global_features = 0
@@ -86,10 +86,7 @@ class PMTNetwork(pl.LightningModule):
             self._linear_layers.append(lin_layer)
         
         if self.global_features:
-            if self.wv_global:
-                self.linear_map = nn.Linear(7,num_global_features)
-            else:
-                self.linear_map = nn.Linear(6,num_global_features)
+            self.linear_map = nn.Linear(7,num_global_features)
         
         if num_lin_layers == 0:
             linear_features = 1
@@ -172,12 +169,7 @@ class PMTNetwork(pl.LightningModule):
         # Process photon batch and PMT features (similar to previous implementation)
         photon_batch = photon_batch.float()
         
-        # Wavelength
-        if not self.old_norm:
-            wavelength = (photon_batch[:, 0].unsqueeze(-1) - 270) / (700 - 270)
-        else:
-            wavelength = (photon_batch[:, 0].unsqueeze(-1) - 300) / (700 - 300)    
-        
+        wavelength = (photon_batch[:, 0].unsqueeze(-1) - 270) / (700 - 270)
         # Photon properties
         photon_position = photon_batch[:, 1:4] / 230  # photon (x, y, z)
         photon_direction = photon_batch[:, 4:7]  # photon direction (dx, dy, dz)
@@ -270,10 +262,7 @@ class PMTNetwork(pl.LightningModule):
         # Consider global features that break symmetry
         if self.global_features:
             
-            if self.wv_global:
-                global_inputs = torch.cat([photon_direction,photon_position,wavelength],dim=-1).unsqueeze(1)
-            else:
-                global_inputs = torch.cat([photon_direction,photon_position],dim=-1).unsqueeze(1)
+            global_inputs = torch.cat([photon_direction,photon_position,wavelength],dim=-1).unsqueeze(1)
             global_inputs = global_inputs.repeat(1,16,1)
             x_global = self.linear_map(global_inputs)  # (batch_size, 16, num_global_features)
     
@@ -319,9 +308,9 @@ class PMTNetwork(pl.LightningModule):
         mse_loss = self.mse_loss(outputs_prob ,labels)
         loss = loss + self.mse_weight*mse_loss
         # Log only at the end of each epoch
-        vram_used = torch.cuda.memory_allocated() / 1024**2  # Convert to MB
-        sys.stdout.write(f"\rVRAM used after batch {batch_idx}: {vram_used:.2f} MB")
-        sys.stdout.flush()
+        #vram_used = torch.cuda.memory_allocated() / 1024**2  # Convert to MB
+        #sys.stdout.write(f"\rVRAM used after batch {batch_idx}: {vram_used:.2f} MB")
+        #sys.stdout.flush()
         self.log("train_loss", loss, prog_bar=True, on_epoch=True, on_step=False, sync_dist=True)
 
         return loss
