@@ -64,7 +64,7 @@ def main():
         linear_features=model_dict["linear_features"],
         num_global_features=model_dict["num_global_features"],
         mse_weight=model_dict["mse_weight"],
-        QE=model_dict["QE"],
+        QE=False,#model_dict["QE"],
         conv_map=model_dict["conv_map"],
         global_features=model_dict["global_features"],
         wv_global = model_dict["wv_global"]
@@ -78,11 +78,11 @@ def main():
 
     # Load data
     my_dir = BaseDataModule(
-        "/scratch/tmp/fvaracar/geant_h5_files/second_run/",
+        "/scratch/tmp/fvaracar/geant_h5_files/cross_sec_run/",
         batch_size=10000,
         val_batch_size=256,
-        QE=True,#model_dict["QE"],
-        num_workers=8
+        QE=False,#model_dict["QE"],
+        num_workers=12
     )
 
     # Set up checkpoint callback
@@ -95,10 +95,10 @@ def main():
 
     # Initialize Trainer with specified logging path and profiler
     trainer = Trainer(
-        max_epochs=10,
+        max_epochs=6,
         callbacks=[checkpoint_callback],
         default_root_dir=model_dict["logs_path"],
-        enable_progress_bar=False,
+        enable_progress_bar=True,
         profiler=AdvancedProfiler()
     )
 

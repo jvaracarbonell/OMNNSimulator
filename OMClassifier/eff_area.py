@@ -204,16 +204,28 @@ for direction in tqdm(directions):  # Iterate over each direction
     with torch.no_grad():
         for i in range(0, num_photons, batch_size):
             batch = photon_inputs[i:i+batch_size].to(device)  # Move batch to GPU
-            torch.cuda.synchronize()
-            start = time.time()
+           
+            try:
+                torch.cuda.synchronize()
+                start = time.time()
 
-            # Perform the forward pass
-            outputs = model(batch)
+                # Perform the forward pass
+                outputs = model(batch)
 
-            # Synchronize GPU after the operation to ensure all operations are complete
-            torch.cuda.synchronize()
-            end = time.time()
-            print(f"Time taken for process 1: {end - start} seconds", end="\r")
+                # Synchronize GPU after the operation to ensure all operations are complete
+                torch.cuda.synchronize()
+                end = time.time()
+                print(f"Time taken for process 1: {end - start} seconds", end="\r")
+            except:
+                
+                start = time.time()
+
+                # Perform the forward pass
+                outputs = model(batch)
+                
+                end = time.time()
+                print(f"Time taken for process 1: {end - start} seconds", end="\r")
+                
             detection_probs = outputs
             detection_probs = detection_probs / detection_probs.sum(dim=-1, keepdim=True)
             #Polar and eq

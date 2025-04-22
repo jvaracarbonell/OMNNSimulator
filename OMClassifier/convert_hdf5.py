@@ -5,7 +5,7 @@ import glob
 
 # Source and destination directories
 src_dir = '/scratch/tmp/fvaracar/Geant_outputs'
-dst_dir = '/scratch/tmp/fvaracar/geant_h5_files/second_run'
+dst_dir = '/scratch/tmp/fvaracar/geant_h5_files/cross_sec_run'
 
 # List of .dat files to convert
 txt_files = sorted(glob.glob(f'{src_dir}/sim_*/*.dat'))
@@ -27,7 +27,7 @@ for txt_file in txt_files:
     try:
         # Load the .dat file into a NumPy array (assuming whitespace-separated values)
         data = np.loadtxt(txt_file)
-        if len(data)<2500000:
+        if len(data)<1000000:
             # Probably something went wrong
             continue
         # Split the data into inputs (first 7 columns) and labels (remaining columns)
