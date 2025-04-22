@@ -21,8 +21,9 @@ from torch.optim.lr_scheduler import StepLR
 from torch.utils.tensorboard import SummaryWriter
 import pandas as pd
 import sys
+import torch.nn as nn
 
-class PMTNetwork(pl.LightningModule):
+class PMTNetwork(nn.Module):
     def __init__(self, OM: str = "LOM16", num_conv_layers = 3, num_filters = 150, num_lin_layers = 3, linear_features = 150, num_global_features = 5, mse_weight = 0.01, learning_rate=1e-4, wv_global=True, QE=False, global_features=True,QE_measurement="NNVT",conv_map=False, old_norm = False):
         
         super(PMTNetwork, self).__init__()
@@ -35,7 +36,7 @@ class PMTNetwork(pl.LightningModule):
         
         self.pmt_positions = torch.tensor(pmt_positions, dtype=torch.float32)  # Shape: (16, 3) for 16 PMTs with (x, y, z)
         self.pmt_directions = torch.tensor(pmt_directions, dtype=torch.float32)  # Shape: (16, 3) for 16 PMTs' direction vectors
-        self.wv_global = False, # Deprecated
+        self.wv_global = False # Deprecated
         self.global_features = global_features
         if not self.global_features:
             num_global_features = 0
@@ -161,12 +162,14 @@ class PMTNetwork(pl.LightningModule):
                                 [0.41562694, -0.41562694, -0.80901699]])
         
         return pmt_positions, pmt_directions
-
+  
     def forward(self, photon_batch):
         # Process photon batch and PMT features (similar to previous implementation)
         photon_batch = photon_batch.float()
         
+        # Wavelength
         wavelength = (photon_batch[:, 0].unsqueeze(-1) - 270) / (700 - 270)
+        
         # Photon properties
         photon_position = photon_batch[:, 1:4] / 230  # photon (x, y, z)
         photon_direction = photon_batch[:, 4:7]  # photon direction (dx, dy, dz)
@@ -230,7 +233,7 @@ class PMTNetwork(pl.LightningModule):
             is_converging,
             pmt_polar_label.unsqueeze(0).repeat(photon_batch.size(0), 1)
         ], dim=-1) 
-        
+    
         # Reshape, conv1d acts on the second dimension
         x = inputs.permute(0, 2, 1)  # (batch_size, 2, 16)
 
@@ -276,40 +279,3 @@ class PMTNetwork(pl.LightningModule):
             x = torch.exp(x)
             x = x / x.sum(dim=-1, keepdim=True)
         return x
-
-    def configure_optimizers(self):
-        optimizer = torch.optim.AdamW(self.parameters(), lr=self.learning_rate, weight_decay = 1e-2)
-        # StepLR scheduler to reduce learning rate by 3 after each epoch
-        scheduler = StepLR(optimizer, step_size=1, gamma=1/3)
-        return [optimizer], [scheduler]
-
-    def training_step(self, batch, batch_idx):
-        inputs, labels = batch
-        outputs = self.forward(inputs)
-        loss = self.loss_fn(outputs, labels)
-        outputs_prob = torch.exp(outputs)
-        outputs_prob = outputs_prob / outputs_prob.sum(dim=-1, keepdim=True)
-        mse_loss = self.mse_loss(outputs_prob ,labels)
-        loss = loss + self.mse_weight*mse_loss
-        # Log only at the end of each epoch
-        #vram_used = torch.cuda.memory_allocated() / 1024**2  # Convert to MB
-        #sys.stdout.write(f"\rVRAM used after batch {batch_idx}: {vram_used:.2f} MB")
-        #sys.stdout.flush()
-        self.log("train_loss", loss, prog_bar=True, on_epoch=True, on_step=False, sync_dist=True)
-
-        return loss
-    
-    def validation_step(self, batch, batch_idx):
-        inputs, labels = batch
-        outputs = self.forward(inputs)
-        
-        # Compute primary KLDiv loss and MSE loss
-        loss = self.loss_fn(outputs, labels)
-        outputs_prob = torch.exp(outputs)
-        outputs_prob = outputs_prob / outputs_prob.sum(dim=-1, keepdim=True)
-        mse_loss = self.mse_loss(outputs_prob, labels)
-        
-        total_loss = loss + self.mse_weight * mse_loss
-        self.log("val_loss", total_loss)
-        
-        return loss
