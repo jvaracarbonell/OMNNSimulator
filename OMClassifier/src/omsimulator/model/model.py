@@ -23,7 +23,7 @@ import pandas as pd
 import sys
 
 class PMTNetwork(pl.LightningModule):
-    def __init__(self, OM: str = "LOM16", num_conv_layers = 3, num_filters = 150, num_lin_layers = 3, linear_features = 150, num_global_features = 5, mse_weight = 0.01, learning_rate=1e-4, wv_global=True, QE=False, global_features=True,QE_measurement="NNVT",conv_map=False, old_norm = False):
+    def __init__(self, OM: str = "LOM16", num_conv_layers = 3, num_filters = 150, num_lin_layers = 3, linear_features = 150, num_global_features = 5, mse_weight = 0.01, learning_rate=1e-4, wv_global=False, QE=False, global_features=True,QE_measurement="NNVT",conv_map=False, old_norm = False):
         
         super(PMTNetwork, self).__init__()
         if OM == "LOM16":
@@ -220,10 +220,11 @@ class PMTNetwork(pl.LightningModule):
         cos_zenith_angle = photon_direction[:, 2].unsqueeze(1)  # Cosine of zenith (z-direction)
         cos_zenith_angle = cos_zenith_angle * torch.where(pmt_upper_label.unsqueeze(0).bool(), 1, -1)  # Flip sign for lower PMTs
         
-        wavelength = wavelength.repeat(1, 16)  # Repeat wavelength for each PMT, now (batch_size, 16)
+        wavelength_repeated = wavelength.repeat(1, 16)  # Repeat wavelength for each PMT, now (batch_size, 16)
+        
         inputs = torch.stack([
             delta_z, 
-            wavelength, 
+            wavelength_repeated, 
             cos_zenith_angle, 
             cos_delta_phi_position,
             cos_delta_phi,  # Enforces symmetry for azimuth
